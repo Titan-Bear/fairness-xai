@@ -1,0 +1,19 @@
+# Versions tested together on Python 3.11-3.13 (Windows, Linux/Colab).
+# shap is pinned to 0.48.0 because it ships prebuilt wheels for 3.11-3.13;
+# older shap versions need a C++ compiler on Windows + Python 3.13.
+pandas==2.2.3
+numpy==2.1.3
+scikit-learn==1.5.2
+xgboost==2.1.4
+shap==0.48.0
+lime==0.2.0.1
+fairlearn==0.12.0
+scipy==1.14.1
+matplotlib==3.9.4
+# pyparsing 3.3 renamed functions that matplotlib 3.9 still calls (deprecation warnings).
+pyparsing==3.2.3
+seaborn==0.13.2
+plotly==5.24.1
+streamlit==1.41.1
+joblib==1.4.2
+pytest==8.3.4
