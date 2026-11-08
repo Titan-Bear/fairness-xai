@@ -58,15 +58,21 @@ def predict_positive_proba(pipeline: Pipeline, X: pd.DataFrame) -> np.ndarray:
 
 
 def compute_metrics(
-    y_true: np.ndarray | pd.Series, y_proba: np.ndarray, threshold: float = config.DECISION_THRESHOLD
+    y_true: np.ndarray | pd.Series,
+    y_proba: np.ndarray,
+    threshold: float = config.DECISION_THRESHOLD,
+    y_pred: np.ndarray | None = None,
 ) -> dict[str, float]:
     """All performance metrics from true labels and positive-class probabilities.
 
+    By default the class predictions are y_proba >= threshold. A model whose
+    predictions are made differently (the randomised mitigated model) can
+    pass its own y_pred; ROC-AUC always uses y_proba.
     The confusion matrix is stored as four numbers (tn, fp, fn, tp) so it fits
     in one CSV row and the app can redraw it.
     """
     y_true = np.asarray(y_true)
-    y_pred = (y_proba >= threshold).astype(int)
+    y_pred = (y_proba >= threshold).astype(int) if y_pred is None else np.asarray(y_pred)
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
     return {
         "accuracy": accuracy_score(y_true, y_pred),

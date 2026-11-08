@@ -133,8 +133,12 @@ def evaluate_fairness(
     metadata: DatasetMetadata,
     setting: str,
     model_name: str,
+    y_pred: np.ndarray | None = None,
 ) -> tuple[list[dict], pd.DataFrame]:
     """Fairness of one fitted model, for every sensitive attribute.
+
+    Predictions are predict_proba >= 0.5 unless `y_pred` is given (the
+    randomised mitigated model passes its own predictions).
 
     Returns (summary rows, per-group table). Summary rows hold privileged and
     unprivileged values side by side so a sentence or a chart can be built
@@ -142,7 +146,9 @@ def evaluate_fairness(
     positives in the test data): comparing it with the selection rate shows
     whether the model narrows, copies or amplifies the gap in the data.
     """
-    y_pred = (predict_positive_proba(pipeline, split.X_test) >= config.DECISION_THRESHOLD).astype(int)
+    if y_pred is None:
+        y_pred = (predict_positive_proba(pipeline, split.X_test) >= config.DECISION_THRESHOLD).astype(int)
+    y_pred = np.asarray(y_pred)
     y_true = split.y_test.to_numpy()
     summaries, by_group_tables = [], []
 

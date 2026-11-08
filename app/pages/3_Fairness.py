@@ -268,7 +268,50 @@ with tab_mitig:
         st.info("No mitigation results yet. They are produced by `python -m src.run_all` when "
                 "`RUN_MITIGATION = True` in src/config.py.")
     else:
-        part = mitigation[mitigation["dataset"] == dataset] if "dataset" in mitigation.columns else mitigation
-        table_with_download(part, f"mitigation_{dataset}.csv")
-        explain("Logistic Regression before and after fairlearn's ExponentiatedGradient with a demographic-parity "
-                "constraint: performance, fairness and LIME explanation comparison.")
+        part = select(mitigation, dataset=dataset, setting=setting, attribute=attribute).set_index("stage")
+        constrained = part["constrained_attribute"].iloc[0]
+        st.markdown(
+            f"**Logistic Regression** retrained with fairlearn's **ExponentiatedGradient** under a "
+            f"**demographic-parity** constraint on **{constrained}**. Showing the effect on **{attribute}**"
+            + (" (the constrained attribute)." if attribute == constrained else
+               f" - not constrained, so this shows side effects.")
+        )
+        before, after = part.loc["before"], part.loc["after"]
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("DP difference", f"{after['dp_difference']:.3f}",
+                  delta=f"{after['dp_difference'] - before['dp_difference']:+.3f}", delta_color="inverse")
+        c2.metric("EO difference", f"{after['eo_difference']:.3f}",
+                  delta=f"{after['eo_difference'] - before['eo_difference']:+.3f}", delta_color="inverse")
+        c3.metric("Accuracy", f"{after['accuracy']:.3f}",
+                  delta=f"{after['accuracy'] - before['accuracy']:+.3f}")
+        c4.metric("LIME rho between groups", f"{after['spearman_rho']:.2f}",
+                  delta=f"{after['spearman_rho'] - before['spearman_rho']:+.2f}")
+        explain("Values after mitigation; the small number shows the change from before "
+                "(green = improvement).")
+        metrics = {"Accuracy": "accuracy", "F1": "f1", "DP difference": "dp_difference",
+                   "EO difference": "eo_difference", "LIME rho (groups)": "spearman_rho",
+                   "LIME |fidelity gap|": "fidelity_gap"}
+        fig = go.Figure()
+        for stage, color in (("before", "#86b6ef"), ("after", "#2a78d6")):
+            values = [abs(part.loc[stage, m]) if m == "fidelity_gap" else part.loc[stage, m]
+                      for m in metrics.values()]
+            fig.add_bar(x=list(metrics), y=values, name=stage, marker_color=color,
+                        text=[f"{v:.3f}" for v in values], textposition="outside")
+        fig.update_layout(barmode="group", yaxis_range=[0, 1.1])
+        st.plotly_chart(style_figure(fig, height=380), use_container_width=True)
+        explain(
+            "The mitigated model is a randomised mixture of Logistic Regressions: accuracy, F1 and fairness use its "
+            "(seeded) random predictions, for which fairlearn's guarantee holds. ROC-AUC and LIME use its expected "
+            "probability. Demographic parity often trades off against equal opportunity - compare the two bars."
+        )
+        st.markdown("**Before vs after (all columns)**")
+        table_with_download(select(mitigation, dataset=dataset, setting=setting).drop(columns=["interpretation"]),
+                            f"mitigation_{dataset}_{setting}.csv")
+        mit_tests = load_table("mitigation_tests.csv")
+        if mit_tests is not None:
+            st.markdown("**Group differences in LIME explanations, before and after (Mann-Whitney, Holm)**")
+            table_with_download(
+                select(mit_tests, dataset=dataset, setting=setting, attribute=attribute)[
+                    ["model", "measure", "mean_privileged", "mean_unprivileged", "p_value", "p_holm",
+                     "rank_biserial", "significant_holm"]],
+                f"mitigation_tests_{dataset}_{setting}_{attribute}.csv", round_to=4)

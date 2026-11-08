@@ -5,7 +5,8 @@
 
 Steps, for both datasets and both settings:
   load -> preprocess -> train -> evaluate -> fairness -> explain (SHAP, LIME)
-  -> compare explanations -> statistical tests -> trade-off -> (mitigation)
+  -> compare explanations -> statistical tests -> trade-off
+  -> mitigation (RUN_MITIGATION) -> stability (RUN_STABILITY)
 
 --quick writes to a separate folder, so a test run never overwrites the full
 results that the Streamlit app displays. Explanations are cached, so a second
@@ -15,7 +16,6 @@ run only recomputes what changed.
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import logging
 import time
 from contextlib import contextmanager
@@ -28,8 +28,10 @@ from src.compare import build_tradeoff, run_comparison, save_comparison_tables, 
 from src.evaluate import evaluate_models, save_performance_figures, save_performance_table
 from src.explain import QUICK_SETTINGS, ExplainSettings, run_explanations
 from src.fairness import run_fairness, save_fairness_tables
+from src.mitigation import run_mitigation
 from src.models import load_model, model_path, train_all
 from src.preprocess import prepare_dataset
+from src.stability import QUICK_STABILITY, StabilitySettings, run_stability_all
 from src.stats import run_stat_tests, save_stat_tests
 
 logger = logging.getLogger("src.run_all")
@@ -57,6 +59,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="ignore cached explanations and recompute them")
     parser.add_argument("--no-mitigation", action="store_true",
                         help="skip the bias-mitigation step even if enabled in config")
+    parser.add_argument("--no-stability", action="store_true",
+                        help="skip the explanation-stability step even if enabled in config")
     parser.add_argument("--no-figures", action="store_true", help="write tables only")
     return parser.parse_args(argv)
 
@@ -70,15 +74,16 @@ def get_models(dataset: str, split, metadata, skip_training: bool) -> dict:
     return train_all(split, metadata)
 
 
-def run_mitigation_step(prepared: dict, explain_settings: ExplainSettings, n_boot: int) -> None:
-    """Run bias mitigation if the module exists (it is added in Phase 6)."""
-    if importlib.util.find_spec("src.mitigation") is None:
-        logger.info("Mitigation module not present - step skipped.")
-        return
-    from src import mitigation
-
+def run_mitigation_step(prepared: dict, explain_settings: ExplainSettings, n_boot: int, figures: bool) -> None:
+    """Bias mitigation: Logistic Regression before vs after ExponentiatedGradient."""
     with timed("Mitigation"):
-        mitigation.run_mitigation(prepared, explain_settings, n_boot)
+        run_mitigation(prepared, explain_settings, n_boot, save_figures=figures)
+
+
+def run_stability_step(prepared: dict, quick: bool, n_boot: int, figures: bool) -> None:
+    """Explanation stability under input noise (teammate's module)."""
+    with timed("Stability"):
+        run_stability_all(prepared, QUICK_STABILITY if quick else StabilitySettings(), n_boot, save_figures=figures)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -134,7 +139,9 @@ def main(argv: list[str] | None = None) -> None:
         save_tradeoff(build_tradeoff(performance_table, fairness_table, comparison["comparison"]))
 
     if config.RUN_MITIGATION and not args.no_mitigation:
-        run_mitigation_step(prepared, explain_settings, n_boot)
+        run_mitigation_step(prepared, explain_settings, n_boot, figures)
+    if config.RUN_STABILITY and not args.no_stability:
+        run_stability_step(prepared, args.quick, n_boot, figures)
 
     logger.info("All done in %.1f min. Tables: %s", (time.perf_counter() - total_start) / 60, config.TABLES_DIR)
 

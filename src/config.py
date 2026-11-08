@@ -91,6 +91,7 @@ MODEL_DISPLAY_NAMES: dict[str, str] = {
     "logistic_regression": "Logistic Regression",
     "random_forest": "Random Forest",
     "xgboost": "XGBoost",
+    "logistic_regression_mitigated": "Logistic Regression (mitigated)",
 }
 DATASET_DISPLAY_NAMES: dict[str, str] = {"adult": "Adult Income", "compas": "COMPAS"}
 
@@ -148,9 +149,30 @@ QUICK_LIME_NUM_SAMPLES: int = 200
 QUICK_N_BOOTSTRAP: int = 100
 
 # --------------------------------------------------------------------------
-# Mitigation (Phase 6)
+# Bias mitigation
 # --------------------------------------------------------------------------
 RUN_MITIGATION: bool = True
+# ExponentiatedGradient settings: eps = allowed constraint violation,
+# max_iter = number of reduction rounds (each fits one Logistic Regression).
+MITIGATION_EPS: float = 0.01
+MITIGATION_MAX_ITER: int = 50
+
+# --------------------------------------------------------------------------
+# Stability module (teammate's method, integrated)
+# --------------------------------------------------------------------------
+RUN_STABILITY: bool = True
+# 0.0 is always added as a baseline: explaining the SAME input again measures
+# the explainer's own randomness (LIME samples randomly; Tree/Linear SHAP is
+# deterministic, so its baseline is exactly 1).
+STABILITY_NOISE_LEVELS: tuple[float, ...] = (0.01, 0.05, 0.10)
+STABILITY_N_INSTANCES: int = 100
+# Repeat the experiment with three seeds derived from SEED (42, 43, 44), so
+# the results do not depend on one lucky sample.
+STABILITY_SEEDS: tuple[int, ...] = (SEED, SEED + 1, SEED + 2)
+STABILITY_LIME_SAMPLES: int = LIME_NUM_SAMPLES
+
+QUICK_STABILITY_N_INSTANCES: int = 10
+QUICK_STABILITY_SEEDS: tuple[int, ...] = (SEED,)
 
 
 def set_results_dir(results_dir: Path) -> None:

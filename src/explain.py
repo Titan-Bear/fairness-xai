@@ -196,6 +196,7 @@ def lime_values(
     X_explain: pd.DataFrame,
     num_samples: int,
     seed: int,
+    explainer: LimeTabularExplainer | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """LIME weights (n, n_transformed), fidelity (n,) and local predictions (n,).
 
@@ -208,8 +209,14 @@ def lime_values(
     explanation imitates the model near this person. Low fidelity means the
     explanation should be trusted less. Note it is measured on LIME's own
     synthetic neighbourhood, not on real data.
+
+    An existing `explainer` can be passed in: its random generator then
+    continues from where it stopped instead of restarting at `seed`. The
+    stability module uses this, so explaining the same row twice gives two
+    genuinely independent LIME runs (LIME's own randomness).
     """
-    explainer = make_lime_explainer(pipeline, X_train, seed)
+    if explainer is None:
+        explainer = make_lime_explainer(pipeline, X_train, seed)
     model = pipeline.named_steps[MODEL_STEP]
     X_t = pipeline.named_steps[PREPROCESSOR_STEP].transform(X_explain)
     n_features = X_t.shape[1]
@@ -265,8 +272,13 @@ def explain_model(
     model_name: str,
     settings: ExplainSettings,
     force: bool = False,
+    methods: tuple[str, ...] = config.XAI_METHODS,
 ) -> pd.DataFrame:
-    """SHAP + LIME for one fitted model; returns the per-instance table.
+    """SHAP and/or LIME for one fitted model; returns the per-instance table.
+
+    `methods` defaults to both. The mitigation step passes ("lime",) because
+    the mitigated model is not a tree or linear model, so only the
+    model-agnostic LIME can explain it.
 
     Output: one row per (instance, method) with columns
       instance_id, method, model_proba, fidelity (LIME only), local_pred,
@@ -275,7 +287,8 @@ def explain_model(
     """
     shap_ids = list(instances.index)
     lime_ids = lime_instance_ids(instances)
-    proba = pd.Series(pipeline.predict_proba(split.X_test.loc[shap_ids])[:, 1], index=shap_ids)
+    explained_ids = shap_ids if "shap" in methods else lime_ids
+    proba = pd.Series(pipeline.predict_proba(split.X_test.loc[explained_ids])[:, 1], index=explained_ids)
 
     path = cache_path(dataset, setting, model_name, settings)
     if not force:
@@ -288,17 +301,41 @@ def explain_model(
     names = list(preprocessor.get_feature_names_out())
     mapping = map_transformed_to_original(preprocessor)
 
-    logger.info("SHAP  %s | %s | %s: %d instances", dataset, setting, model_name, len(shap_ids))
-    shap_raw = shap_values(pipeline, split.X_train, split.X_test.loc[shap_ids])
-    shap_frame = aggregate_by_original(shap_raw, names, mapping)
-    shap_frame.insert(0, "local_pred", np.nan)
-    shap_frame.insert(0, "fidelity", np.nan)
-    shap_frame.insert(0, "model_proba", proba.loc[shap_ids].to_numpy())
-    shap_frame.insert(0, "method", "shap")
-    shap_frame.insert(0, "instance_id", shap_ids)
+    frames = []
+    if "shap" in methods:
+        logger.info("SHAP  %s | %s | %s: %d instances", dataset, setting, model_name, len(shap_ids))
+        shap_raw = shap_values(pipeline, split.X_train, split.X_test.loc[shap_ids])
+        shap_frame = aggregate_by_original(shap_raw, names, mapping)
+        shap_frame.insert(0, "local_pred", np.nan)
+        shap_frame.insert(0, "fidelity", np.nan)
+        shap_frame.insert(0, "model_proba", proba.loc[shap_ids].to_numpy())
+        shap_frame.insert(0, "method", "shap")
+        shap_frame.insert(0, "instance_id", shap_ids)
+        frames.append(shap_frame)
 
-    logger.info("LIME  %s | %s | %s: %d instances x %d samples",
-                dataset, setting, model_name, len(lime_ids), settings.lime_num_samples)
+    if "lime" in methods:
+        frames.append(_lime_frame(pipeline, split, lime_ids, proba, names, mapping, settings,
+                                  f"{dataset} | {setting} | {model_name}"))
+
+    table = pd.concat(frames, ignore_index=True)
+    config.ensure_dirs()
+    table.to_csv(path, index=False)
+    return table
+
+
+def _lime_frame(
+    pipeline: Pipeline,
+    split: SplitData,
+    lime_ids: list,
+    proba: pd.Series,
+    names: list[str],
+    mapping: dict[str, str],
+    settings: ExplainSettings,
+    label: str,
+) -> pd.DataFrame:
+    """LIME rows of the explanation table (aggregated per original feature)."""
+    logger.info("LIME  %s: %d instances x %d samples",
+                label, len(lime_ids), settings.lime_num_samples)
     lime_raw, fidelity, local_pred = lime_values(
         pipeline, split.X_train, split.X_test.loc[lime_ids], settings.lime_num_samples, settings.seed
     )
@@ -308,11 +345,7 @@ def explain_model(
     lime_frame.insert(0, "model_proba", proba.loc[lime_ids].to_numpy())
     lime_frame.insert(0, "method", "lime")
     lime_frame.insert(0, "instance_id", lime_ids)
-
-    table = pd.concat([shap_frame, lime_frame], ignore_index=True)
-    config.ensure_dirs()
-    table.to_csv(path, index=False)
-    return table
+    return lime_frame
 
 
 def feature_columns(table: pd.DataFrame) -> list[str]:

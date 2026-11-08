@@ -64,7 +64,7 @@ st.markdown(
 | **Data** | dataset size, class balance, group sizes and base rates |
 | **Models** | accuracy, F1, ROC-AUC, ROC curves and confusion matrices |
 | **Fairness** | the core of the audit - fairness metrics, explanations per group, comparison and statistical tests, trade-off, mitigation |
-| **Stability** | explanation stability under input perturbations (teammate's module) |
+| **Stability** | explanation stability under small input noise - SHAP vs LIME, across models and groups (teammate's module) |
 
 Use the **sidebar** to switch pages. On the Fairness page, the sidebar selectors choose the dataset, model,
 sensitive attribute, explanation method and setting.
@@ -83,6 +83,8 @@ FILES = {
     "stat_tests.csv": "Mann-Whitney tests with Holm correction (RQ3)",
     "tradeoff.csv": "Trade-off and Pareto table (RQ4)",
     "mitigation.csv": "Bias mitigation before vs after (optional)",
+    "stability_summary.csv": "Explanation stability under input noise (Stability module)",
+    "stability_by_group.csv": "Stability per demographic group (Stability module)",
 }
 rows = []
 for filename, purpose in FILES.items():
