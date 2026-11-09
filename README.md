@@ -8,14 +8,6 @@ A second module asks whether explanations are **stable** when the input changes 
 
 The result is a Python package (`src/`), Jupyter notebooks that also run in Google Colab, and a Streamlit dashboard.
 
-## Team and modules
-
-| Part | Owner | Code |
-|---|---|---|
-| Data, preprocessing, models, performance, app shell | shared | `src/data.py`, `preprocess.py`, `models.py`, `evaluate.py`, `app/` |
-| **Fairness** - fairness metrics, group-wise explanation comparison, statistics, trade-off, mitigation | student 1 | `src/fairness.py`, `explain.py`, `compare.py`, `stats.py`, `mitigation.py`, `app/pages/3_Fairness.py` |
-| **Stability** - explanation stability under input perturbations | `src/stability.py`, `notebooks/06_stability.ipynb`, `app/pages/4_Stability.py` |
-
 ## Research questions and hypotheses
 
 **Fairness module**
