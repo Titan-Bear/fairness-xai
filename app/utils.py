@@ -170,6 +170,9 @@ def style_figure(fig: go.Figure, height: int = 380) -> go.Figure:
     )
     fig.update_yaxes(gridcolor="rgba(128,128,128,0.2)")
     fig.update_xaxes(gridcolor="rgba(128,128,128,0.2)")
+    # Let value labels above/beside the longest bar draw outside the plot area
+    # instead of being cut off at its edge.
+    fig.update_traces(cliponaxis=False, selector=dict(type="bar"))
     return fig
 
 
