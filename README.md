@@ -1,7 +1,5 @@
 # Fairness-Aware XAI Audit Dashboard
 
-MCA mini project (Semester 3, MMC306).
-
 Machine-learning models that make decisions about people can be **black boxes** and can be **biased** against
 groups such as women or Black defendants. Explanation methods (**SHAP**, **LIME**) explain individual predictions,
 and **fairness metrics** measure bias - but the two are usually used separately. This project combines them and asks
@@ -16,7 +14,7 @@ The result is a Python package (`src/`), Jupyter notebooks that also run in Goog
 |---|---|---|
 | Data, preprocessing, models, performance, app shell | shared | `src/data.py`, `preprocess.py`, `models.py`, `evaluate.py`, `app/` |
 | **Fairness** - fairness metrics, group-wise explanation comparison, statistics, trade-off, mitigation | student 1 | `src/fairness.py`, `explain.py`, `compare.py`, `stats.py`, `mitigation.py`, `app/pages/3_Fairness.py` |
-| **Stability** - explanation stability under input perturbations | student 2 (teammate) | `src/stability.py`, `notebooks/06_stability.ipynb`, `app/pages/4_Stability.py` |
+| **Stability** - explanation stability under input perturbations | `src/stability.py`, `notebooks/06_stability.ipynb`, `app/pages/4_Stability.py` |
 
 ## Research questions and hypotheses
 
@@ -59,7 +57,7 @@ fairness-xai/
 │   ├── 03_fairness.ipynb                RQ1
 │   ├── 04_explanations_compare.ipynb    RQ2, RQ3, RQ4
 │   ├── 05_mitigation.ipynb              bias mitigation, before vs after
-│   └── 06_stability.ipynb               Stability module (teammate)
+│   └── 06_stability.ipynb               Stability module 
 ├── src/
 │   ├── config.py        every path, seed, sample size, model parameter and flag
 │   ├── data.py          loaders for Adult and COMPAS
@@ -233,7 +231,7 @@ most rows win on at least one criterion, so the table narrows the choice but doe
 * **Mitigated model.** `ExponentiatedGradient` is a randomised mixture; accuracy, F1 and fairness use its seeded random
   predictions (the guarantee holds for these), ROC-AUC and LIME use its expected probability via fairlearn's
   private `_pmf_predict` (pinned fairlearn version).
-* **Stability module integration.** The teammate's method was kept (shared noise draw scaled per level, clipping,
+* **Stability module integration.** The method was kept (shared noise draw scaled per level, clipping,
   0% baseline, rho/top-k/prediction flip, bootstrap CI, Wilcoxon, Friedman + Kendall's W, Holm) and connected to the
   shared data, models and explainers. Changes: COMPAS added; German Credit not included (the project uses two
   datasets); seeds derived from `SEED` (42, 43, 44); LIME configured like the Fairness module (one-hot columns
