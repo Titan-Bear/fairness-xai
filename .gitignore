@@ -21,3 +21,6 @@ results/quick/
 Thumbs.db
 .vscode/
 .idea/
+
+# Zips created by the Colab walkthrough notebook
+fairness_xai_*.zip

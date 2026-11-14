@@ -44,6 +44,7 @@ fairness-xai/
 ├── results/cache/       cached SHAP/LIME explanations
 ├── results/quick/       output of `run_all --quick` (kept separate from the full results)
 ├── notebooks/
+│   ├── 0.ipynb                              the whole project in one notebook, every block explained
 │   ├── 01_eda.ipynb                     groups, base rates, proxies
 │   ├── 02_preprocess_train.ipynb        split, preprocessing, training, performance
 │   ├── 03_fairness.ipynb                RQ1
@@ -81,6 +82,12 @@ The first run needs internet: Adult is downloaded from OpenML (via fairlearn) an
 both are cached in `data/raw/` for offline use afterwards.
 
 ## Setup (Google Colab)
+
+**Easiest:** open `notebooks/0.ipynb` in Colab
+(https://colab.research.google.com/github/Titan-Bear/fairness-xai/blob/main/notebooks/0.ipynb)
+and choose *Runtime -> Run all*. It clones this repository, installs the pinned libraries and runs the whole project
+step by step, with an explanation above every code cell. `QUICK = True` in section 0.3 gives a dry run in about
+5 minutes.
 
 Every notebook starts with the same setup cell. Choose **one** option in it:
 
